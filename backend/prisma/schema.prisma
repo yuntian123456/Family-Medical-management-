@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db" // Directly using the path
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  familyMembers FamilyMember[] // Relation to FamilyMember model
+}
+
+model FamilyMember {
+  id          Int      @id @default(autoincrement())
+  name        String
+  relation    String   // e.g., "Self", "Spouse", "Child"
+  dateOfBirth DateTime
+  userId      Int      // Foreign key to User model
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  medicalRecords MedicalRecord[] // Relation to MedicalRecord model
+  prescriptions  Prescription[]  // Relation to Prescription model
+  healthIndicators HealthIndicator[] // Relation to HealthIndicator model
+}
+
+model MedicalRecord {
+  id             Int      @id @default(autoincrement())
+  recordType     String   // e.g., "Doctor Visit", "Lab Test", "Vaccination"
+  description    String
+  date           DateTime
+  attachments    String?  // Optional: path or link to an uploaded file
+  familyMemberId Int      // Foreign key to FamilyMember model
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model HealthIndicator {
+  id             Int      @id @default(autoincrement())
+  indicatorType  String   // e.g., "Weight", "Blood Pressure", "Blood Sugar"
+  value          String   // Using string to accommodate various formats like "120/80" for BP
+  unit           String?  // e.g., "kg", "lbs", "mmHg", "mg/dL"
+  date           DateTime // Date of measurement
+  notes          String?  // Optional
+  familyMemberId Int      // Foreign key to FamilyMember model
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Prescription {
+  id             Int      @id @default(autoincrement())
+  medicationName String
+  dosage         String   // e.g., "1 tablet", "10mg"
+  frequency      String   // e.g., "Once a day", "Twice a day with meals"
+  startDate      DateTime
+  endDate        DateTime? // Optional
+  notes          String?   // Optional
+  familyMemberId Int      // Foreign key to FamilyMember model
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
