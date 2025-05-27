@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Typography, message, Alert } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
           </Button>
         </Form.Item>
         <div style={{ textAlign: 'center' }}>
-          Don't have an account? <a href="/register">Register now!</a>
+          Don't have an account? <Link to="/register">Register now!</Link>
         </div>
       </Form>
     </div>

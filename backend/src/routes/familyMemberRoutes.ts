@@ -4,6 +4,18 @@ import * as familyMemberService from '../services/familyMemberService';
 
 const router = express.Router();
 
+// Helper function to validate date format (YYYY-MM-DD) and validity
+const isValidDate = (dateString: string): boolean => {
+  // Regex to check YYYY-MM-DD format
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateString)) {
+    return false;
+  }
+  // Check if the date is valid (e.g., not 2023-02-30)
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && date.toISOString().startsWith(dateString);
+};
+
 // Apply authMiddleware to all routes in this router
 router.use(authMiddleware);
 
@@ -15,6 +27,10 @@ router.post('/', async (req: Request, res: Response) => {
 
     if (!name || !relation || !dateOfBirth) {
       return res.status(400).json({ error: 'Name, relation, and dateOfBirth are required' });
+    }
+
+    if (!isValidDate(dateOfBirth)) {
+      return res.status(400).json({ error: 'Invalid dateOfBirth format. Please use YYYY-MM-DD.' });
     }
 
     const member = await familyMemberService.addFamilyMember(userId, { name, relation, dateOfBirth });
@@ -68,10 +84,14 @@ router.put('/:memberId', async (req: Request, res: Response) => {
     if (isNaN(memberId)) {
       return res.status(400).json({ error: 'Invalid member ID' });
     }
-    
+
     // Ensure at least one field is being updated
     if (!name && !relation && !dateOfBirth) {
       return res.status(400).json({ error: 'No update data provided' });
+    }
+
+    if (dateOfBirth && !isValidDate(dateOfBirth)) {
+      return res.status(400).json({ error: 'Invalid dateOfBirth format. Please use YYYY-MM-DD.' });
     }
 
     const updatedMember = await familyMemberService.updateFamilyMember(userId, memberId, { name, relation, dateOfBirth });
