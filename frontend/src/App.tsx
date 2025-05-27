@@ -1,12 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Typography, Button, Spin } from 'antd';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage'; // Import DashboardPage
-import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
-import { useAuth } from './contexts/AuthContext'; // Import useAuth
+import DashboardPage from './pages/DashboardPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 const { Header, Content, Footer } = Layout;
@@ -15,13 +15,13 @@ const { Title } = Typography;
 const App: React.FC = () => {
   const { user, logout, isLoading, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // Get current location
 
   const handleLogout = () => {
     logout();
-    navigate('/login'); // Redirect to login after logout
+    navigate('/login');
   };
 
-  // Render a loading spinner centrally if auth state is loading
   if (isLoading) {
     return (
       <Layout style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -30,14 +30,16 @@ const App: React.FC = () => {
     );
   }
 
+  // Determine current selected keys for the menu
+  const currentPath = location.pathname;
+  let selectedKeys: string[] = [];
+  if (currentPath === '/') selectedKeys = ['/'];
+  else if (currentPath.startsWith('/dashboard')) selectedKeys = ['/dashboard'];
+  else if (currentPath.startsWith('/login')) selectedKeys = ['/login'];
+  else if (currentPath.startsWith('/register')) selectedKeys = ['/register'];
+  // Add more conditions if there are other top-level menu items
+
   return (
-    // Router is already provided by index.tsx's wrapping of App.
-    // If not, or if this App component is used elsewhere without Router, it would need to be here.
-    // For CRA setup, Router in index.tsx or App.tsx is fine. Let's assume it's fine.
-    // No, Router should be here if App.tsx is the main routing hub.
-    // Let's re-add Router here for clarity as App.tsx defines all routes.
-    // It was removed in a previous step, that was a mistake.
-    // Correction: The initial setup placed BrowserRouter in App.tsx. It should remain here.
     <Layout className="layout">
       <Header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="logo">
@@ -47,25 +49,30 @@ const App: React.FC = () => {
             </Title>
           </Link>
         </div>
-        <Menu theme="dark" mode="horizontal" selectedKeys={[]} style={{ lineHeight: '64px', flexGrow: 1 }}>
+        <Menu 
+          theme="dark" 
+          mode="horizontal" 
+          selectedKeys={selectedKeys} // Dynamically set selected keys
+          style={{ lineHeight: '64px', flexGrow: 1 }}
+        >
           {!user && !token ? (
             <>
-              <Menu.Item key="home">
+              <Menu.Item key="/"> {/* Key matches path */}
                 <Link to="/">Home</Link>
               </Menu.Item>
-              <Menu.Item key="login">
+              <Menu.Item key="/login"> {/* Key matches path */}
                 <Link to="/login">Login</Link>
               </Menu.Item>
-              <Menu.Item key="register">
+              <Menu.Item key="/register"> {/* Key matches path */}
                 <Link to="/register">Register</Link>
               </Menu.Item>
             </>
           ) : (
             <>
-              <Menu.Item key="dashboard">
+              <Menu.Item key="/dashboard"> {/* Key matches path */}
                 <Link to="/dashboard">Dashboard</Link>
               </Menu.Item>
-              {/* Add other authenticated links here */}
+              {/* Add other authenticated links here, ensure keys match paths */}
             </>
           )}
         </Menu>
@@ -82,7 +89,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route 
-              path="/dashboard" 
+              path="/dashboard/*" // Allow nested routes for dashboard
               element={
                 <ProtectedRoute>
                   <DashboardPage />
@@ -100,16 +107,11 @@ const App: React.FC = () => {
   );
 };
 
-
-// Wrapper component to include Router if it's not in index.tsx
+// AppWrapper provides the Router context to the App component.
 const AppWrapper: React.FC = () => (
   <Router>
     <App />
   </Router>
 );
 
-
-export default AppWrapper; // Export the wrapper
-// Or if Router is definitely in index.tsx, just export App.
-// For this project, let's stick to Router here as per original CRA structure.
-// The `index.tsx` wraps App with AuthProvider, so AppWrapper (with Router) should be the default export.
+export default AppWrapper;
