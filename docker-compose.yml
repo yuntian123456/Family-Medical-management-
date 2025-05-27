@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001" # Exposes backend on host port 3001
+    volumes:
+      - ./backend/prisma:/usr/src/app/prisma # Persists SQLite database
+      # For development, you might also mount your source code:
+      # - ./backend/src:/usr/src/app/src 
+    environment:
+      - NODE_ENV=production
+      - PORT=3001 # Explicitly set port, though Dockerfile EXPOSEs it
+      - DATABASE_URL=file:./prisma/dev.db # Path relative to WORKDIR in backend Dockerfile
+      - JWT_SECRET=${JWT_SECRET} # Injected from .env file in the project root
+    env_file:
+      - .env # Looks for .env file in the project root
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80" # Exposes frontend (Nginx) on host port 3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Note:
+# 1. Create a .env file in the project root (same directory as this docker-compose.yml)
+#    with the following content:
+#    JWT_SECRET=your_very_strong_and_unique_secret_here_for_docker
+#
+# 2. The backend Dockerfile was designed to use a .env file located at /usr/src/app/.env
+#    However, for docker-compose, it's often better to inject environment variables
+#    directly as shown above using 'environment' and 'env_file'.
+#    If JWT_SECRET is not set via compose, the backend will use its default or exit in prod.
+#    The DATABASE_URL is set here to ensure it points correctly within the container.
+#
+# 3. The prisma/dev.db file will be created inside ./backend/prisma on your host machine
+#    due to the volume mapping. Ensure this path is writable.
+#    Initial migration should be handled. The current setup does not auto-run migrations on start.
+#    You might need to exec into the container or have a script for initial setup:
+#    docker-compose exec backend npx prisma migrate deploy # (or dev for development)
+#
+# 4. If you have a frontend/nginx.conf that proxies /api to the backend,
+#    ensure the proxy_pass directive in nginx.conf is: http://backend:3001
+#    The provided frontend/nginx.conf in a previous step does not include this proxy,
+#    assuming API calls are made directly to the backend's exposed port from the client.
+#    If using Nginx as a reverse proxy for the backend as well, frontend Dockerfile and
+#    nginx.conf would need adjustment, and frontend service would expose the main port.
+#    For this setup, frontend calls /api which means it expects backend on same host/port or needs proxy.
+#    To make this work with separate services as defined:
+#    a) Frontend API calls in api.ts should point to http://localhost:3001/api (during local dev outside Docker)
+#       or http://<host_ip_or_localhost_if_on_same_machine>:3001/api when frontend is run on host
+#       and backend in Docker.
+#    b) OR, Nginx in frontend service should proxy /api requests to backend service.
+#       The example nginx.conf had this commented out. If it's enabled, then frontend can call /api.
+#       Let's assume for now that the frontend's api.ts will be configured to call the correct backend URL,
+#       or that Nginx proxy is not used for /api, and direct calls are made.
+#       If Nginx is to proxy, the frontend's `api.ts` baseURL should be `/api` and Nginx handles it.
+#       The `frontend/nginx.conf` should be updated to include the proxy for /api.
+#       I will assume the Nginx proxy for /api is intended.
+#       The `frontend/nginx.conf` I created earlier had the proxy commented out. I will update it.
+
+volumes: # Define top-level volumes if you were to use named volumes
+  # prisma_data: # Example of a named volume for Prisma data
+  db_data: # Generic name for database data, used by backend's prisma volume
+
+# Note on Prisma migrations:
+# Before the first `docker-compose up`, you might need to ensure the database schema is initialized.
+# One way is to run migrations manually after the backend container is up:
+# 1. `docker-compose up -d backend` (to start only backend)
+# 2. `docker-compose exec backend npx prisma migrate deploy` (for production)
+#    or `docker-compose exec backend npx prisma db push --accept-data-loss` (for dev, if schema changes often and data loss is ok)
+#    or `docker-compose exec backend npm run prisma:migrate` (if this script handles deploy/dev appropriately)
+#    The current `prisma:migrate` script uses `prisma migrate dev`. This is suitable for development.
+#    For production, `prisma migrate deploy` is typically used.
+#    The Dockerfile does `npx prisma generate` which is for the client, not migrations.
+#    The current `backend/Dockerfile` copies `prisma` folder, so migrations files are there.
+#    The `npm run prisma:migrate` script in backend/package.json is:
+#    `npx dotenv-cli -e prisma/.env -- sh -c 'echo $DATABASE_URL && npx prisma migrate dev'`
+#    This is problematic for Docker as it relies on a prisma/.env file which might not exist or be configured correctly
+#    for the Docker environment. `DATABASE_URL` should be directly available from the compose environment.
+#    A simpler migration command in compose would be:
+#    `docker-compose exec backend npx prisma migrate dev` (assuming DATABASE_URL is correctly set in the container env)
+#
+# For a "one-click" startup including migrations, a script in the backend's entrypoint or a separate
+# migration service in docker-compose could be used. For simplicity now, manual migration after first up is assumed.
+# Or, the backend CMD could be a script that runs migrations then starts the app.
+# Example: CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# This is a common pattern. I'll update the backend Dockerfile CMD for this.

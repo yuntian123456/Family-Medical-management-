@@ -3,7 +3,34 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Use a strong secret in production
+
+// JWT Secret Configuration
+let JWT_SECRET = process.env.JWT_SECRET;
+const DEFAULT_JWT_SECRET = 'your-secret-key';
+
+if (!JWT_SECRET) {
+  console.warn(
+    'Warning: JWT_SECRET is not set in environment variables. Using default secret. ' +
+    'This is NOT secure for production. Please set a strong, unique JWT_SECRET.'
+  );
+  JWT_SECRET = DEFAULT_JWT_SECRET;
+} else if (JWT_SECRET === DEFAULT_JWT_SECRET) {
+  console.warn(
+    'Warning: JWT_SECRET is set to the default insecure value. ' +
+    'This is NOT secure for production. Please set a strong, unique JWT_SECRET.'
+  );
+}
+
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET) {
+    console.error(
+      'CRITICAL ERROR: JWT_SECRET is not set or is using the default insecure value in a production environment. ' +
+      'Application will now exit. Please set a strong, unique JWT_SECRET environment variable.'
+    );
+    process.exit(1); // Exit the application
+  }
+}
+
 
 export const register = async (email: string, password: string): Promise<Omit<User, 'password'>> => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -35,7 +62,7 @@ export const login = async (email: string, password: string): Promise<string> =>
     throw new Error('Invalid credentials');
   }
 
-  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
+  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET!, { // Non-null assertion as process would exit if null in prod
     expiresIn: '1h', // Token expires in 1 hour
   });
 

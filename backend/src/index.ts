@@ -4,6 +4,7 @@ import familyMemberRoutes from './routes/familyMemberRoutes'; // Import family m
 import medicalRecordRoutes from './routes/medicalRecordRoutes'; // Import medical record routes
 import prescriptionRoutes from './routes/prescriptionRoutes'; // Import prescription routes
 import healthIndicatorRoutes from './routes/healthIndicatorRoutes'; // Import health indicator routes
+import { errorHandlerMiddleware } from './middleware/errorHandlerMiddleware'; // Import the centralized error handler
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -25,6 +26,9 @@ app.use('/api/family-members/:familyMemberId/health-indicators', healthIndicator
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is healthy!' });
 });
+
+// Use the centralized error handling middleware as the last middleware
+app.use(errorHandlerMiddleware);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
