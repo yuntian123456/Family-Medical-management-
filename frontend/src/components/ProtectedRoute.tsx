@@ -1,9 +1,13 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import React, { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom'; // Outlet is no longer needed
 import { useAuth } from '../contexts/AuthContext';
 import { Spin, Layout } from 'antd'; // Import Spin for loading indicator
 
-const ProtectedRoute: React.FC = () => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, isLoading, token } = useAuth();
 
   if (isLoading) {
@@ -28,7 +32,7 @@ const ProtectedRoute: React.FC = () => {
   // But the primary check should be `user` for rendering protected content.
   // If `user` is available (meaning token was valid and decoded), allow access.
   if (user) {
-    return <Outlet />;
+    return <>{children}</>;
   }
 
   // Fallback if somehow isLoading is false, token exists, but user is null (e.g. failed decoding, expired)
